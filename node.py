@@ -1,8 +1,21 @@
 import socket
-import sys
 import threading
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+
 
 def newNode(myport):
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend()
+    )
+    public_key = private_key.public_key()
+    pem = public_key.public_bytes(
+    encoding=serialization.Encoding.PEM,
+    format=serialization.PublicFormat.SubjectPublicKeyInfo
+)
     listOfNodes = []
     rendezvous = (socket.gethostbyname(socket.gethostname()), 55555)
 
@@ -11,7 +24,7 @@ def newNode(myport):
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((socket.gethostname(), myport))
-    sock.sendto(b'0', rendezvous)
+    sock.sendto('StoreKey {}'.format(pem).encode(), rendezvous)
 
     while True:
         data = sock.recv(1024).decode()
@@ -22,9 +35,9 @@ def newNode(myport):
 
     data = sock.recv(1024).decode()
     while data.strip() != 'end':
-        ip, dport = data.split(' ')
+        ip, dport, key = data.split(' ', 2)
         dport = int(dport)
-        listOfNodes.append((ip, dport))
+        listOfNodes.append(((ip, dport), key))
         data = sock.recv(1024).decode()
 
     # listen for
@@ -34,9 +47,9 @@ def newNode(myport):
             data, adress = sock.recvfrom(1024)
             data = data.decode()
             if '{}'.format(adress) == str(rendezvous):
-                ip, port = data.split(' ')
+                ip, port, key = data.split(' ',2)
                 port = int(port)
-                listOfNodes.append((ip, port))
+                listOfNodes.append(((ip, port),key))
             else:
                 list = data.split('#')
                 if len(list) > 1:
