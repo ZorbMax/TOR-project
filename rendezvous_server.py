@@ -2,26 +2,26 @@ import socket
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((socket.gethostname(), 55555))
+clients = []
+publicKeys = []
 
 while True:
-    clients = []
-
-    while True:
-        data, address = sock.recvfrom(128)
-
+    data, address = sock.recvfrom(128)
+    if data.decode().strip() == 'client':
+        print('connection from a client: {}'.format(address))
+        for client in clients:
+            addr, port = client
+            sock.sendto('{} {}'.format(addr, port).encode(), address)
+        sock.sendto(b'end', address)
+    else:
         print('connection from: {}'.format(address))
-        clients.append(address)
-
         sock.sendto(b'ready', address)
 
-        if len(clients) == 2:
-            print('got 2 clients, sending details to each')
-            break
+        for client in clients:
+            addr, port = address
+            addr2, port2 = client
+            sock.sendto('{} {}'.format(addr, port).encode(), client)
+            sock.sendto('{} {}'.format(addr2, port2).encode(), address)
 
-    c1 = clients.pop()
-    c1_addr, c1_port = c1
-    c2 = clients.pop()
-    c2_addr, c2_port = c2
-
-    sock.sendto('{} {} {}'.format(c1_addr, c2_port, c1_port).encode(), c2)
-    sock.sendto('{} {} {}'.format(c2_addr, c1_port, c2_port).encode(), c1)
+        sock.sendto(b'end', address)
+        clients.append(address)
