@@ -1,14 +1,16 @@
+#https://github.com/abhisheklolage/challenge-response-auth
+import hashlib
 import socket
 import random
 import threading
-import time
-import hashlib
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
 
 listOfNodes = []
 rendezvous = (socket.gethostname(), 55555)
@@ -23,17 +25,6 @@ while data.strip() != 'end':
     listOfNodes.append(((ip, port), public_key))
     data = sock.recv(4092).decode()
 
-def listen():
-    while True:
-        data = sock.recv(4092).decode()
-        if data.split(' ')[0] == 'update':
-            command, ip, newPort, public_key = data.split(' ',3)
-            listOfNodes.append(((ip, int(newPort)), public_key))
-        else:
-            print(data)
-listener = threading.Thread(target=listen, daemon=True)
-listener.start()
-
 def encrypt(msg, pem):
     public_key = serialization.load_pem_public_key(
         pem,
@@ -45,7 +36,7 @@ def encrypt(msg, pem):
             mgf=padding.MGF1(algorithm=hashes.SHA256()),
             algorithm=hashes.SHA256(),
             label=None
-        )       
+        )
     )
     return encrypted
 def randomNode():
@@ -74,11 +65,26 @@ def tripleEncryption(data, key1, key2, key3, address1, address2, address3):
 
     return result.encode()
 
+gatewayNode, middleRelay, exitRelay, strMiddleRelay, strExitRelay = randomNode()
 while True:
-    msg = str(input('Enter your message here : '))
-    gatewayNode, middleRelay, exitRelay, strMiddleRelay, strExitRelay = randomNode()
-    #encrypted = encrypt(strMiddleRelay[0] + "#" + encrypt(strExitRelay[0] + "#" + encrypt(msg, exitRelay[1].encode()), middleRelay[1].encode()),gatewayNode[1].encode())
+    password = str(input('Enter your password here : '))
     strDestination = '/'.join(map(str, (socket.gethostbyname(socket.gethostname()), 60000)))
-    data = tripleEncryption(msg, gatewayNode[1].encode(), middleRelay[1].encode(), exitRelay[1].encode(), strMiddleRelay, strExitRelay, strDestination)
+    data = tripleEncryption("connect request", gatewayNode[1].encode(), middleRelay[1].encode(), exitRelay[1].encode(),
+                            strMiddleRelay, strExitRelay, strDestination)
     sock.sendto(data, gatewayNode[0])
-    time.sleep(5)
+    testToken = sock.recv(1024)
+    key = hashlib.md5()
+    key.update(password.encode())
+    iv = b'This is an IV456'
+    cipher = Cipher(algorithms.AES(key.hexdigest().encode()), modes.CBC(iv))
+    encryptor = cipher.encryptor()
+    ct = encryptor.update(testToken) + encryptor.finalize()
+    data = tripleEncryption(ct, gatewayNode[1].encode(), middleRelay[1].encode(), exitRelay[1].encode(),
+                            strMiddleRelay, strExitRelay, strDestination)
+    sock.sendto(data, gatewayNode[0])
+    data = sock.recv(1024).decode()
+    if data == "Success":
+        print("Connected to server")
+        input("Press any key to disconnect from Tor")
+    else:
+        print("Wrong password")
