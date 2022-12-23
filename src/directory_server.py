@@ -5,6 +5,9 @@ sock.bind((socket.gethostname(), 55555))
 clients = []
 addrClient = 0
 
+"""
+Handle the addition of a new node in the network + keep update a list of all address and public keys to give it to clients
+"""
 while True:
     data, address = sock.recvfrom(4092)
     data = data.decode()

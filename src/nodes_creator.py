@@ -1,12 +1,13 @@
-# Import the necessary packages
-import socket
 import time
 import threading
-import node
+from src import node
 
 port = 50001
 threadList = []
 
+"""
+Responsable for instanciate the threads of local nodes for the p2p network
+"""
 while True:
     threadListTemp = []
     nodes = input('Number of nodes you want to add : ')

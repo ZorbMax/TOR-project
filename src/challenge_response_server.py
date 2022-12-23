@@ -8,8 +8,12 @@ password = str(input('Enter the correct password for the user here : '))
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind((socket.gethostname(), 60000))
+
+"""
+Generate a random string to send it to the client for the challenge
+"""
 def random_token_generator(size=16, chars=string.ascii_uppercase + string.digits):
-	return ''.join(random.choice(chars) for _ in range(size))
+    return ''.join(random.choice(chars) for _ in range(size))
 
 while True:
     data, address = sock.recvfrom(4048)
