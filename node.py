@@ -1,5 +1,7 @@
 import socket
 import threading
+
+from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
@@ -68,29 +70,25 @@ def newNode(myport):
         )
         return original_message.decode()
 
-    # listen for
-    # equiv: nc -u -l 50001
+
     def listen():
         while True:
-            data, adress = sock.recvfrom(1024)
+            data, adress = sock.recvfrom(4092)
             if '{}'.format(adress) == str(rendezvous):
-                ip, port, key = data.decode().split(' ',2)
+                ip, port, key = data.decode().split(' ', 2)
                 port = int(port)
                 listOfNodes.append(((ip, port),key))
             else:
-                data = decrypt(data)
-                list = data.split('#')
-                if len(list) > 1:
-                    mylist = []
-                    for i in list[0].split("/"):
-                        mylist.append(i)
-                    nextHop = (mylist[0], int(mylist[1]))
-                    data = '#'.join(list[1:len(list)])
-                    print(str(myport) + " reçu : " + data)
-                    sock.sendto('{}'.format(data).encode(), nextHop)
-                else:
-                    print(list[0])
-
+                key, data = data.decode().split("#####", 1)
+                key = decrypt(eval(key))
+                f = Fernet(key)
+                data = f.decrypt(eval(data)).decode()
+                nextHop, data = data.split("#####", 1)
+                mylist = []
+                for i in nextHop.split("/"):
+                    mylist.append(i)
+                nextHop = (mylist[0], int(mylist[1]))
+                sock.sendto(data.encode(), nextHop)
 
     listener = threading.Thread(target=listen, daemon=True);
     listener.start()
