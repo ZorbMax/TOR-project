@@ -1,15 +1,15 @@
 import socket
 import random
 import threading
+import time
+import hashlib
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.fernet import Fernet
 
-"""
-TO DO : update listOfNodes when a new node is added in the network : DONE
-"""
 listOfNodes = []
 rendezvous = (socket.gethostname(), 55555)
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -29,13 +29,11 @@ def listen():
         if data.split(' ')[0] == 'update':
             command, ip, newPort, public_key = data.split(' ',3)
             listOfNodes.append(((ip, int(newPort)), public_key))
+        else:
+            print(data)
 listener = threading.Thread(target=listen, daemon=True)
 listener.start()
 
-
-"""
-TO DO : temp list keeping track of nodes already used : DONE
-"""
 def encrypt(msg, pem):
     public_key = serialization.load_pem_public_key(
         pem,
@@ -83,3 +81,4 @@ while True:
     strDestination = '/'.join(map(str, (socket.gethostbyname(socket.gethostname()), 60000)))
     data = tripleEncryption(msg, gatewayNode[1].encode(), middleRelay[1].encode(), exitRelay[1].encode(), strMiddleRelay, strExitRelay, strDestination)
     sock.sendto(data, gatewayNode[0])
+    time.sleep(5)
