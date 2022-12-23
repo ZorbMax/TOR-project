@@ -2,6 +2,10 @@
 
 The goal of this project is to design and implement a TOR network that enables
 anonymous usage of a network.
+
+First, the cryptography library is used in this project, so you will need to install it using :
+> pip install cryptography
+
 The github contains 5 python files and 4 of them has to be running at the same time
 
 1. directory_server.py
